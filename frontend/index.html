@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sentinel — Fraud Detection Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js" crossorigin></script>
+<style>
+  :root{
+    --bg: #0B1120;
+    --panel: #121B2E;
+    --panel-raised: #16213A;
+    --border: #223050;
+    --text: #E7ECF5;
+    --muted: #7C8AA5;
+    --accent: #3DD9C4;
+    --accent-dim: #1E5D55;
+    --risk-high: #FF5D5D;
+    --risk-med: #FFB020;
+    --risk-low: #3DD9C4;
+    --risk-min: #4ADE80;
+    --display: 'Space Grotesk', sans-serif;
+    --body: 'Inter', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(61,217,196,0.06), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(61,217,196,0.04), transparent 45%);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+  }
+  #root{max-width: 1280px; margin: 0 auto; padding: 28px 24px 60px;}
+
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom: 28px; flex-wrap: wrap; gap: 16px;
+  }
+  .brand{display:flex; align-items:center; gap: 12px;}
+  .brand-mark{
+    width: 34px; height: 34px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), #1B8F82);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--display); font-weight:700; color:#08151A; font-size:16px;
+    box-shadow: 0 0 24px rgba(61,217,196,0.35);
+  }
+  .brand-text h1{font-family: var(--display); font-size:20px; margin:0; letter-spacing:0.2px;}
+  .brand-text span{font-family: var(--mono); font-size:11px; color:var(--muted); letter-spacing: 1.5px; text-transform:uppercase;}
+
+  .status-pill{
+    display:flex; align-items:center; gap:8px;
+    font-family: var(--mono); font-size:12px; color: var(--muted);
+    background: var(--panel); border:1px solid var(--border);
+    padding: 8px 14px; border-radius: 999px;
+  }
+  .dot{width:8px; height:8px; border-radius:50%; position:relative;}
+  .dot.online{background: var(--accent);}
+  .dot.online::after{
+    content:''; position:absolute; inset:-4px; border-radius:50%;
+    border: 1px solid var(--accent); animation: pulse 1.8s ease-out infinite;
+  }
+  .dot.offline{background: var(--risk-high);}
+  @keyframes pulse{
+    0%{ transform:scale(0.6); opacity:0.9; }
+    100%{ transform:scale(2.4); opacity:0; }
+  }
+
+  .grid{display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom:24px;}
+  @media(max-width: 900px){ .grid{grid-template-columns: repeat(2,1fr);} }
+
+  .stat-card{
+    background: var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding: 18px 20px; position:relative; overflow:hidden;
+  }
+  .stat-card .label{
+    font-family: var(--mono); font-size:11px; text-transform:uppercase;
+    letter-spacing:1.2px; color:var(--muted); margin-bottom:10px;
+  }
+  .stat-card .value{font-family: var(--display); font-size:30px; font-weight:600;}
+  .stat-card .value.accent{color:var(--accent);}
+  .stat-card .value.danger{color:var(--risk-high);}
+  .stat-card .value.warn{color:var(--risk-med);}
+
+  .panels{display:grid; grid-template-columns: 380px 1fr; gap: 18px; align-items:start;}
+  @media(max-width: 980px){ .panels{grid-template-columns: 1fr;} }
+
+  .panel{
+    background: var(--panel); border:1px solid var(--border); border-radius:14px;
+    padding: 20px;
+  }
+  .panel h2{
+    font-family: var(--display); font-size:15px; margin: 0 0 4px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .panel .sub{font-size:12px; color:var(--muted); margin-bottom:16px;}
+
+  .field{margin-bottom:12px;}
+  .field label{
+    display:block; font-family:var(--mono); font-size:10.5px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.8px; margin-bottom:5px;
+  }
+  .field input{
+    width:100%; background: var(--panel-raised); border:1px solid var(--border);
+    border-radius:8px; padding:9px 10px; color:var(--text); font-family:var(--mono);
+    font-size:13px; outline:none; transition: border-color .15s;
+  }
+  .field input:focus{border-color: var(--accent);}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+
+  .btn{
+    width:100%; padding:11px; border-radius:9px; border:none; cursor:pointer;
+    font-family: var(--display); font-weight:600; font-size:13.5px;
+    letter-spacing:0.3px; transition: transform .1s, filter .15s;
+  }
+  .btn:active{transform: scale(0.98);}
+  .btn-primary{background: var(--accent); color:#052422;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-secondary{
+    background: transparent; color:var(--text); border:1px solid var(--border);
+    margin-top:8px;
+  }
+  .btn-secondary:hover{border-color: var(--accent); color:var(--accent);}
+  .btn:disabled{opacity:0.5; cursor:not-allowed;}
+
+  .result-box{
+    margin-top:16px; padding:14px; border-radius:10px; border:1px solid var(--border);
+    background: var(--panel-raised); font-family:var(--mono); font-size:12.5px;
+  }
+  .result-row{display:flex; justify-content:space-between; padding:4px 0; color:var(--muted);}
+  .result-row b{color:var(--text); font-weight:500;}
+  .badge{
+    display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px;
+    font-family:var(--mono); font-weight:600; letter-spacing:0.5px;
+  }
+  .badge.HIGH{background:rgba(255,93,93,0.15); color:var(--risk-high); border:1px solid rgba(255,93,93,0.4);}
+  .badge.MEDIUM{background:rgba(255,176,32,0.15); color:var(--risk-med); border:1px solid rgba(255,176,32,0.4);}
+  .badge.LOW{background:rgba(61,217,196,0.15); color:var(--risk-low); border:1px solid rgba(61,217,196,0.4);}
+  .badge.MINIMAL{background:rgba(74,222,128,0.15); color:var(--risk-min); border:1px solid rgba(74,222,128,0.4);}
+
+  .ledger-wrap{position:relative; overflow:hidden; border-radius:10px;}
+  .scanline{
+    position:absolute; left:0; right:0; height:2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity:0.5; animation: sweep 3.2s linear infinite; pointer-events:none;
+  }
+  @keyframes sweep{
+    0%{ top:0%; } 100%{ top:100%; }
+  }
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12.5px;}
+  thead th{
+    text-align:left; padding:9px 10px; color:var(--muted); font-weight:500;
+    font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px;
+    border-bottom:1px solid var(--border); position:sticky; top:0; background:var(--panel);
+  }
+  tbody td{padding:9px 10px; border-bottom:1px solid rgba(34,48,80,0.5);}
+  tbody tr:hover{background: rgba(61,217,196,0.04);}
+  .risk-tag{
+    display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:600;
+  }
+  .risk-tag .sw{width:8px; height:8px; border-radius:2px;}
+  .empty-state{
+    padding: 40px 20px; text-align:center; color:var(--muted); font-family:var(--mono); font-size:12.5px;
+  }
+  .table-scroll{max-height: 420px; overflow-y:auto;}
+  .error-banner{
+    background: rgba(255,93,93,0.1); border:1px solid rgba(255,93,93,0.35);
+    color: var(--risk-high); padding:12px 16px; border-radius:10px; font-size:13px;
+    margin-bottom:20px; font-family: var(--mono);
+  }
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+  a{color:var(--accent);}
+  @media (prefers-reduced-motion: reduce){
+    .dot.online::after, .scanline{ animation: none; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback, useRef } = React;
+
+const API_BASE = window.FRAUD_API_BASE || "http://localhost:8000";
+
+function fmtPct(x){ return (x*100).toFixed(1) + "%"; }
+function fmtTime(ts){
+  const d = new Date(ts*1000);
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+
+const RISK_COLOR = {
+  HIGH: "var(--risk-high)",
+  MEDIUM: "var(--risk-med)",
+  LOW: "var(--risk-low)",
+  MINIMAL: "var(--risk-min)",
+};
+
+function StatusPill({online}){
+  return (
+    <div className="status-pill">
+      <span className={`dot ${online ? "online" : "offline"}`}></span>
+      {online ? "API connected" : "API offline"}
+    </div>
+  );
+}
+
+function StatCard({label, value, cls}){
+  return (
+    <div className="stat-card">
+      <div className="label">{label}</div>
+      <div className={`value ${cls||""}`}>{value}</div>
+    </div>
+  );
+}
+
+function emptyForm(){
+  const f = { Amount: "120.00", Time: "43200" };
+  for(let i=1;i<=10;i++) f["V"+i] = (Math.random()*2-1).toFixed(3);
+  return f;
+}
+
+function TransactionForm({onResult, apiOnline}){
+  const [form, setForm] = useState(emptyForm());
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const update = (k, v) => setForm(prev => ({...prev, [k]: v}));
+
+  const randomize = () => { setForm(emptyForm()); setResult(null); };
+
+  const submit = async () => {
+    setLoading(true); setError(null);
+    try {
+      const payload = {};
+      Object.keys(form).forEach(k => payload[k] = parseFloat(form[k]));
+      const res = await fetch(`${API_BASE}/predict`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload)
+      });
+      if(!res.ok){
+        const errBody = await res.json().catch(()=>({}));
+        throw new Error(errBody.detail || `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      setResult(data);
+      onResult && onResult();
+    } catch(e){
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="panel">
+      <h2>Score a transaction</h2>
+      <div className="sub">Feed feature values into the live model</div>
+
+      <div className="row2">
+        <div className="field">
+          <label>Amount ($)</label>
+          <input value={form.Amount} onChange={e=>update("Amount", e.target.value)} />
+        </div>
+        <div className="field">
+          <label>Time (sec of day)</label>
+          <input value={form.Time} onChange={e=>update("Time", e.target.value)} />
+        </div>
+      </div>
+
+      <div className="row2">
+        {["V1","V2","V3","V4"].map(k=>(
+          <div className="field" key={k}>
+            <label>{k}</label>
+            <input value={form[k]} onChange={e=>update(k, e.target.value)} />
+          </div>
+        ))}
+      </div>
+      <div className="row2">
+        {["V5","V6","V7","V8"].map(k=>(
+          <div className="field" key={k}>
+            <label>{k}</label>
+            <input value={form[k]} onChange={e=>update(k, e.target.value)} />
+          </div>
+        ))}
+      </div>
+      <div className="row2">
+        {["V9","V10"].map(k=>(
+          <div className="field" key={k}>
+            <label>{k}</label>
+            <input value={form[k]} onChange={e=>update(k, e.target.value)} />
+          </div>
+        ))}
+      </div>
+
+      <button className="btn btn-primary" onClick={submit} disabled={loading || !apiOnline}>
+        {loading ? "Scoring…" : "Score transaction"}
+      </button>
+      <button className="btn btn-secondary" onClick={randomize} disabled={loading}>
+        Randomize features
+      </button>
+
+      {error && <div className="result-box" style={{borderColor:"var(--risk-high)", color:"var(--risk-high)"}}>⚠ {error}</div>}
+
+      {result && (
+        <div className="result-box">
+          <div className="result-row"><span>Risk level</span><span className={`badge ${result.risk_level}`}>{result.risk_level}</span></div>
+          <div className="result-row"><span>Fraud probability</span><b>{fmtPct(result.fraud_probability)}</b></div>
+          <div className="result-row"><span>Anomaly score</span><b>{result.anomaly_score.toFixed(3)}</b></div>
+          <div className="result-row"><span>Flagged as fraud</span><b>{result.is_fraud_predicted ? "Yes" : "No"}</b></div>
+          <div className="result-row"><span>Flagged as anomaly</span><b>{result.is_anomaly ? "Yes" : "No"}</b></div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LiveLedger({transactions}){
+  return (
+    <div className="panel">
+      <h2>Live transaction feed</h2>
+      <div className="sub">Most recent transactions scored by the model</div>
+      <div className="ledger-wrap">
+        {transactions.length > 0 && <div className="scanline"></div>}
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th><th>ID</th><th>Amount</th><th>Fraud %</th><th>Anomaly</th><th>Risk</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map(tx => (
+                <tr key={tx.id + tx.timestamp}>
+                  <td>{fmtTime(tx.timestamp)}</td>
+                  <td>#{tx.id}</td>
+                  <td>${tx.Amount.toFixed(2)}</td>
+                  <td>{fmtPct(tx.fraud_probability)}</td>
+                  <td>{tx.is_anomaly ? "Yes" : "—"}</td>
+                  <td>
+                    <span className="risk-tag" style={{color: RISK_COLOR[tx.risk_level]}}>
+                      <span className="sw" style={{background: RISK_COLOR[tx.risk_level]}}></span>
+                      {tx.risk_level}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {transactions.length === 0 && (
+            <div className="empty-state">No transactions scored yet — score one, or run a simulation.</div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App(){
+  const [apiOnline, setApiOnline] = useState(false);
+  const [stats, setStats] = useState({total_scored:0, flagged_fraud:0, flagged_anomaly:0, fraud_rate_scored:0});
+  const [transactions, setTransactions] = useState([]);
+  const [simLoading, setSimLoading] = useState(false);
+  const pollRef = useRef(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      const h = await fetch(`${API_BASE}/health`);
+      const hData = await h.json();
+      setApiOnline(hData.status === "ok");
+
+      if(hData.status === "ok"){
+        const [s, r] = await Promise.all([
+          fetch(`${API_BASE}/stats`).then(r=>r.json()),
+          fetch(`${API_BASE}/transactions/recent?limit=30`).then(r=>r.json()),
+        ]);
+        setStats(s);
+        setTransactions(r);
+      }
+    } catch(e){
+      setApiOnline(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    pollRef.current = setInterval(refresh, 4000);
+    return () => clearInterval(pollRef.current);
+  }, [refresh]);
+
+  const runSimulation = async () => {
+    setSimLoading(true);
+    try {
+      await fetch(`${API_BASE}/simulate?n=15`, {method:"POST"});
+      await refresh();
+    } catch(e){ /* surfaced via status pill */ }
+    setSimLoading(false);
+  };
+
+  return (
+    <React.Fragment>
+      <div className="topbar">
+        <div className="brand">
+          <div className="brand-mark">S</div>
+          <div className="brand-text">
+            <h1>Sentinel</h1>
+            <span>Fraud Detection Console</span>
+          </div>
+        </div>
+        <StatusPill online={apiOnline} />
+      </div>
+
+      {!apiOnline && (
+        <div className="error-banner">
+          Can't reach the API at <code>{API_BASE}</code>. Start it with <code>uvicorn app:app --reload</code> in the backend folder, and make sure <code>train_model.py</code> has been run.
+        </div>
+      )}
+
+      <div className="grid">
+        <StatCard label="Transactions scored" value={stats.total_scored} />
+        <StatCard label="Flagged as fraud" value={stats.flagged_fraud} cls="danger" />
+        <StatCard label="Flagged as anomaly" value={stats.flagged_anomaly} cls="warn" />
+        <StatCard label="Live fraud rate" value={fmtPct(stats.fraud_rate_scored)} cls="accent" />
+      </div>
+
+      <div className="panels">
+        <TransactionForm onResult={refresh} apiOnline={apiOnline} />
+        <div>
+          <div style={{marginBottom:"14px", display:"flex", justifyContent:"flex-end"}}>
+            <button className="btn btn-primary" style={{width:"auto", padding:"9px 18px"}} onClick={runSimulation} disabled={simLoading || !apiOnline}>
+              {simLoading ? "Simulating…" : "▶ Simulate 15 transactions"}
+            </button>
+          </div>
+          <LiveLedger transactions={transactions} />
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
